@@ -242,7 +242,22 @@ _psshrd_process_ramdisk()
 
 		s=$(du "${output}/ramdisk.dmg" | awk '{print $1}'); s=$((${s}*1024*1024/512))
 		hfsplus "${output}/ramdisk.dmg" grow "${s}" || return ${?}
-		hfsplus "${output}/ramdisk.dmg" untar "${binpack}" >/dev/null || return ${?}
+
+		if [ "${u}" = "Darwin" ]; then
+			hfsplus "${output}/ramdisk.dmg" untar "${binpack}" >/dev/null || return ${?}
+		else
+			# for some unknown reason ssh won't connect on linux
+			# trying to restart usbmuxd + usb unplug can cause kernel crash
+			hfsplus "${output}/ramdisk.dmg" mv "/usr/local/bin/restored_update" "/usr/local/bin/restored_update_bak" || return ${?}
+			hfsplus "${output}/ramdisk.dmg" untar "${binpack}" >/dev/null || return ${?}
+			echo "/usr/local/bin/dropbear -p44; exec /usr/local/bin/restored_update_bak" >"${output}/restored_update.tmp" || return ${?}
+			hfsplus "${output}/ramdisk.dmg" add "${output}/restored_update.tmp" "/usr/local/bin/restored_update" || return ${?}
+			hfsplus "${output}/ramdisk.dmg" chmod 700 "/usr/local/bin/restored_update" || return ${?}
+			# quick fix to prevent auto reboot
+			hfsplus "${output}/ramdisk.dmg" mv "/sbin/reboot" "/sbin/reboot_bak" || return ${?}
+			hfsplus "${output}/ramdisk.dmg" mv "/sbin/halt" "/sbin/halt_bak" || return ${?}
+		fi
+
 		hfsplus "${output}/ramdisk.dmg" chown 0:0 "/usr/local/bin/restored_update" || return ${?}
 		hfsplus "${output}/ramdisk.dmg" chown 0:0 "/usr/local/bin/dropbear" || return ${?}
 		oldimgtool -m "IMG3" -T "rdsk" "${output}/ramdisk.dmg" "${output}/ramdisk.img3" || return ${?}

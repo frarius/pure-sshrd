@@ -5,7 +5,7 @@ _pure_sshrd_menu()
 {
 cat <<EOF
 
- Welcome to Pure-SSHRD v1.0.0
+ Welcome to Pure-SSHRD v1.0.1
 ----------------------------------------
  d) index-module (prepares ssh-ramdisk)
  p) pack-module (makes ssh-ramdisk)
